@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prüfungs-Uhr</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Etwas weicheres Dunkelblau */
+            color: #e2e8f0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Ruhige, schlichte Anzeige der Uhrzeit */
+        .clock-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .clock-display {
+            font-size: 22vw; /* Etwas kleiner für mehr Weißraum */
+            font-weight: 500; /* Weniger fett für ein schlichteres Schriftbild */
+            line-height: 1;
+            color: #f8fafc;
+            letter-spacing: -0.02em;
+        }
+
+        .status-text {
+            color: #64748b;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Informationsleiste unten */
+        .info-bar {
+            background: #1e293b;
+            border-top: 1px solid #334155;
+            padding: 2rem 3rem;
+        }
+
+        .info-group {
+            text-align: left;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        .info-value.highlight {
+            color: #3b82f6;
+        }
+
+        /* Eingabefelder */
+        input[type="number"], input[type="time"] {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            padding: 0.4rem;
+            border-radius: 0.3rem;
+            font-size: 0.9rem;
+        }
+
+        /* Buttons */
+        .btn-ok { background: #334155; border: 1px solid #475569; }
+        .btn-ok:hover { background: #475569; }
+        .btn-reset { color: #64748b; font-size: 0.8rem; text-decoration: underline; }
+        
+        button {
+            padding: 0.4rem 1rem;
+            border-radius: 0.3rem;
+            transition: all 0.2s;
+        }
+
+        /* Steuerung nur bei Bedarf einblenden */
+        #controls {
+            opacity: 0.1;
+            transition: opacity 0.4s;
+        }
+        #controls:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hauptfokus: Aktuelle Uhrzeit (Schlicht) -->
+    <div class="clock-container">
+        <p class="status-text">Aktuelle Zeit</p>
+        <div id="currentTime" class="clock-display">00:00</div>
+    </div>
+
+    <!-- Prüfungsdetails -->
+    <div class="info-bar w-full">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            
+            <div class="flex gap-20">
+                <div class="info-group">
+                    <p class="info-label">Anfang</p>
+                    <p id="displayStart" class="info-value">--:--</p>
+                </div>
+                <div class="info-group">
+                    <p class="info-label">Dauer</p>
+                    <p id="displayDuration" class="info-value">-- <span class="text-sm font-normal text-slate-500">min</span></p>
+                </div>
+                <div class="info-group">
+                    <p class="info-label">Geplantes Ende</p>
+                    <p id="displayEnd" class="info-value highlight">--:--</p>
+                </div>
+            </div>
+
+            <!-- Dezente Steuerung am rechten Rand -->
+            <div id="controls" class="flex items-center gap-4">
+                <input type="time" id="inputStart">
+                <input type="number" id="inputDuration" min="1" placeholder="Dauer" class="w-20">
+                <button onclick="saveSettings()" class="btn-ok">Übernehmen</button>
+                <button onclick="resetAll()" class="btn-reset">Alles zurücksetzen</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const currentTimeEl = document.getElementById('currentTime');
+        const inputStart = document.getElementById('inputStart');
+        const inputDuration = document.getElementById('inputDuration');
+        const displayStart = document.getElementById('displayStart');
+        const displayDuration = document.getElementById('displayDuration');
+        const displayEnd = document.getElementById('displayEnd');
+
+        function updateClock() {
+            const now = new Date();
+            currentTimeEl.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function saveSettings() {
+            const startTime = inputStart.value;
+            const duration = parseInt(inputDuration.value);
+            if (!startTime || isNaN(duration)) return;
+
+            localStorage.setItem('examData', JSON.stringify({ startTime, duration }));
+            applyData(startTime, duration);
+        }
+
+        function applyData(startTime, duration) {
+            displayStart.textContent = startTime;
+            displayDuration.innerHTML = `${duration} <span class="text-sm font-normal text-slate-500">min</span>`;
+
+            const [hours, minutes] = startTime.split(':').map(Number);
+            const endDate = new Date();
+            endDate.setHours(hours);
+            endDate.setMinutes(minutes + duration);
+
+            displayEnd.textContent = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function loadSavedData() {
+            const saved = localStorage.getItem('examData');
+            const now = new Date();
+            const currentFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            
+            if (saved) {
+                const { startTime, duration } = JSON.parse(saved);
+                inputStart.value = startTime;
+                inputDuration.value = duration;
+                applyData(startTime, duration);
+            } else {
+                inputStart.value = currentFormatted;
+            }
+        }
+
+        function resetAll() {
+            localStorage.removeItem('examData');
+            inputDuration.value = '';
+            displayStart.textContent = '--:--';
+            displayDuration.innerHTML = '-- <span class="text-sm font-normal text-slate-500">min</span>';
+            displayEnd.textContent = '--:--';
+            const now = new Date();
+            inputStart.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+        loadSavedData();
+    </script>
+</body>
+</html>
